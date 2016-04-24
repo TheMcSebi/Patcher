@@ -6,6 +6,10 @@
 #include <unistd.h>
 #include "stdinc.c"
 
+// global & dev
+unsigned short debug = 1;
+unsigned short confirmation_interrupts = 0;
+
 typedef struct
 {
     const char* prefix;
@@ -37,8 +41,8 @@ void conf_create(char* conf_name) {
 
   conftemp = fopen(conf_name, "w");
   if(conftemp != NULL) {
-    fputs("; This is the configuration file for McSebi's Patcher\n", conftemp);
-    fputs("; Putting a prefix is not required.\n\n", conftemp);
+    fputs("; This is the configuration file.\n", conftemp);
+    fputs("; Setting a prefix is optional.\n\n", conftemp);
     fputs("[patcher]\n", conftemp);
     fputs("prefix = 980039C30F8\n", conftemp);
     fputs("target = 84D20200\n", conftemp);
@@ -51,7 +55,7 @@ void conf_create(char* conf_name) {
   }
 }
 
-getOutputFile(char* out, char* in) {
+void getOutputFile(char* out, char* in) {
   int inlen = strlen(in);
   if(strstr(in, ".") != NULL) {
     int k = 0;
@@ -64,6 +68,11 @@ getOutputFile(char* out, char* in) {
   } else {
     strcpy(out, in);
     append(out, "_patched");
+  }
+  if(strstr(in, "\\") != NULL) {
+    // On windows always the full path is parsed when dropping a file onto an executable
+    // If this is the case, let's not close the console windows right after finishing
+    confirmation_interrupts = 1;
   }
 }
 
@@ -86,6 +95,7 @@ int main(int argc, char** argv) {
   char ta[1024] = {0};
   char re[1024] = {0};
 
+  // file names and file input stuff
   char filestr[128] = {0};
   char input_file[128] = {0};
   char output_file[128] = {0};
@@ -101,8 +111,6 @@ int main(int argc, char** argv) {
   char target[1024] = {0};
   char replace[1024] = {0};
 
-  // other stuff
-  unsigned short debug = 0;
   unsigned short mode = 0;
 
   // file and hex stuff
@@ -126,6 +134,7 @@ int main(int argc, char** argv) {
   //        First: Checking if start parameters are given
   //
   //////////////////////////////////////////////////////
+
   if(argc == 2) {
     // Mode 0: <file> & read from config file
     strcpy(filestr, argv[1]);
@@ -144,7 +153,7 @@ int main(int argc, char** argv) {
         }
     }
 
-    printf("Config loaded from '%s':\nprefix='%s'\ntarget='%s'\nreplace='%s'\n\n", config_file, conf.prefix, conf.target, conf.replace);
+    printf("Config loaded from '%s':\n prefix='%s'\n target='%s'\n replace='%s'\n\n", config_file, conf.prefix, conf.target, conf.replace);
 
     strcpy(pr, conf.prefix);
     strcpy(ta, conf.target);
@@ -198,43 +207,54 @@ int main(int argc, char** argv) {
     //        If no parameters are given: Parse input manually
     //
     //////////////////////////////////////////////////////
+    confirmation_interrupts = 1;
 
-    printf(" Modes\n1 = <target> <replace> [file]\n2 = <prefix> <target> <replace> [file]\n\n");
+    printf(" Modes\n  1 = <target> <replace> [file]\n  2 = <prefix> <target> <replace> [file]\n\n");
     printf("Enter Mode: ");
     scanf("%hu", &mode);
-    getchar();
+    getchar(); // clear buffer after dirty scanf
+
+    printf("\nEnter Data: ");
+    inputstring = getline();
+
+    varcount = 1 + countChars(inputstring, ' ');
+
+    if(debug == 1) {
+      printf(" varcount = %d\n", varcount);
+    }
 
     if(mode == 1) { // Mode 1: <target> <replace> [file]
-      printf("Enter Data: ");
-      inputstring = getline();
-      varcount = 1 + countChars(inputstring, ' ');
-      printf("varcount = %d\n", varcount);
-
       if(varcount == 2) { // If filename is not given
         sscanf(inputstring, "%s %s", ta, re);
       } else if(varcount == 3) { // If filename is given
         sscanf(inputstring, "%s %s %s", ta, re, filestr);
+      } else {
+        printf("Error: Unsupported Input Format for Mode 1\n");
       }
-
     } else if(mode == 2) { // Mode 2: <prefix> <target> <replace> [file]
-      printf("Enter Data: ");
-      inputstring = getline();
-      varcount = 1 + countChars(inputstring, ' ');
-      printf("varcount = %d\n", varcount);
-
       if(varcount == 3) { // If filename is not given
         sscanf(inputstring, "%s %s %s", pr, ta, re);
       } else if(varcount == 4) { // If filename is given
         sscanf(inputstring, "%s %s %s %s", pr, ta, re, filestr);
+      } else {
+        printf("Error: Unsupported Input Format for Mode 2\n");
       }
+    } else {
+      printf("Error: Unsupported Mode\n");
     }
 
-    printf("The filename is set to: %s\n", filestr);
-    printf("\nstrlen(filename) = %d\n", strlen(filestr));
+    printf("\n Filename: %s\n", filestr);
 
+    if(debug == 1) {
+      printf(" Length of Filename = %d\n", strlen(filestr));
+    }
 
-    getchar();
-  }
+    if(confirmation_interrupts == 1) {
+      printf("\nEnter to continue...");
+      getchar();
+    }
+
+  } // if(argc == n) end
 
   //////////////////////////////////////////////////////
   //
@@ -250,11 +270,10 @@ int main(int argc, char** argv) {
 
   getOutputFile(output_file, input_file);
 
-
-  printf("\ninput filename = %s\noutput filename = %s\nlength of input filename = %d\n", input_file, output_file, strlen(filestr), filestr);
+  printf("\n INPUT = %s\n OUTPUT = %s\n", input_file, output_file);
 
   if(tlen == rlen) {
-    printf("\nLength of prefix hex: %d\nLength of section hex: %d\n", plen, tlen);
+    printf("\n Length of prefix hex: %d\n Length of section hex: %d\n", plen, tlen);
   } else {
     printf("Error: Target length does not match Replace length.\n");
     getchar();
@@ -274,37 +293,41 @@ int main(int argc, char** argv) {
 
   slen = plen+tlen;
 
-  printf("<prefix> = \"%s\"\n<target> = \"%s\"\n<replace> = \"%s\"\n", prefix, target, replace);
-
+  printf("\n Prefix = '%s'\n Target = '%s'\n Replace = '%s'\n", prefix, target, replace);
 
   input = fopen(input_file, "rb"); // Use binary mode to prevent headache
   if(input != NULL) {
     filesize = fgetsize(input);
+    printf("\nInput file opened successfully.\n");
+
+    char* scanner = (char*)malloc(slen); // Initialize scanner array treating it as low level as possible
+    memset(scanner, 0, slen);
+    memcpy(scanner, prefix, plen);
+    memcpy(&scanner[plen], target, tlen);
+
+    printf("\n Sequence to search for = '");
+    printstr(scanner, slen);
+    printf("'");
+
+    if(slen > 1 || slen == 0) {
+      printf(" Total length = %d bytes\n", slen);
+    } else {
+      printf(" Total length = %d byte\n", slen);
+    }
+
+    char* buffer = (char*)malloc(slen); // Medieval like preparation of a char array
+    memset(buffer, 0, slen);
+
+    printf(" Filesize = %d bytes\n", filesize);
+
+    if(confirmation_interrupts == 1) {
+      printf("\nEnter to continue...");
+      getchar();
+    }
 
     output = fopen(output_file, "wb"); // Non-binary mode apparently does various magic to newlines
     if(output != NULL) {
-
-      printf("Both files opened successfully.\n");
-
-
-      char* scanner = (char*)malloc(slen); // Initialize scanner array treating it as low level as possible
-      memset(scanner, 0, slen);
-      memcpy(scanner, prefix, plen);
-      memcpy(&scanner[plen], target, tlen);
-
-      printf("scanner = \"");
-      printstr(scanner, slen);
-      printf("\"; length = %d byte\n", slen);
-
-
-      char* buffer = (char*)malloc(slen); // Medieval like preparation of a char array
-      memset(buffer, 0, slen);
-
-      //printf("sizeof(scanner) %d\n", sizeof(scanner));
-      printf("Filesize = %d bytes\n\nContinue?\n", filesize);
-
-      getchar();
-
+      printf("Output opened successfully.\n");
       //////////////////////////////////////////////////////
       //
       //    Inner Loop Start
@@ -324,7 +347,6 @@ int main(int argc, char** argv) {
           fwrite(replace, sizeof(char), rlen, output);
           i = i + rlen;
 
-
         } else {
           // if nothing found, write byte to output
           i++;
@@ -339,30 +361,36 @@ int main(int argc, char** argv) {
       fwrite(buffer, sizeof(char), slen, output);
 
       // Print out all information on where the string has been located at
-      printf("\n%d occurrences found.\n", occ);
+      printf("\nA total of %d occurrences has been patched:\n", occ);
       for(j = 0; j < occ; j++) {
         int o = occurrences[j];
-        printf("%d. Location: 0x%x dec(%d)\n", j, o, o);
+        printf("%d: Location: 0x%x dec(%d)\n", j+1, o, o);
       }
 
       targetsize = fgetsize(output);
-      printf("difference in file size abs(%d - %d) = %d (if difference is not 0, contact developer)\n", filesize, targetsize, abs(filesize-targetsize));
-
       // Everything should be done. Closing files.
       fclose(input);
       fclose(output);
 
+      if(filesize != targetsize) {
+        printf("Output size does not match input size.");
+        getchar();
+        return 1;
+      }
 
       printf("\nFinished.\n");
     } else {
-      printf("Error: Failed to open output file for writing\n");
+      printf("Error: Failed to open output file for writing.\n");
     }
 
   } else {
-    printf("Error: failed to open input file for reading\n");
+    printf("Error: Failed to open input file for reading.\n");
   }
 
   // Wait if opened through shortcut (one of the intended useages)
-  getchar();
+  if(confirmation_interrupts == 1) {
+    printf("\nEnter to continue...");
+    getchar();
+  }
   return 0;
 }

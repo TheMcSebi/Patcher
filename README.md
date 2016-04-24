@@ -1,6 +1,7 @@
 # Patcher
 
-This Patcher allows you to replace certain sequences of bytes inside binary files.
+This Patcher allows you to search for certain sequences of bytes inside binary files and replace them.
+This being especially useful when working with constantly changing memory locations in binary files.
 
 This tool offers various operation modes:
 
@@ -15,35 +16,60 @@ This tool offers various operation modes:
 
 ### Usage
 
-Sample for mode A:
+Command line interface:
 ```
-patcher.exe
-
  + + + + + McSebi's Bytepatcher + + + + +
 
  Modes
 1 = <target> <replace> [file]
 2 = <prefix> <target> <replace> [file]
 
-Enter Mode: 
+Enter Mode: n
+Enter Data: data
 ```
-Options: 1 or 2
+ - *n* being either 1 or 2
+ - *data* depending on the choosen mode
 ```
-Enter Data: 
-```
-Options: Depende on the mode
+Sample Mode 1:       
+Enter Data: 9800000039C30F87B603000080FA5B0F 84D20200008D742600895C241C895C24 app.exe
 
-Mode 1 could be used like
-```
-9800000039C30F87B603000080FA5B0F 84D20200008D742600895C241C895C24 app.exe
+Sample Mode 2:
+Enter Data: 11000085C075DA8B44241C8B3D908140008D48 010FB6405A 01894C242084 app.exe
 ```
 
-An example for mode 2 would be
+Using start parameters:
 ```
-11000085C075DA8B44241C8B3D908140008D48 010FB6405A 01894C242084 app.exe
+patcher.exe 9800000039C30F87B603000080FA5B0F 84D20200008D742600895C241C895C24 app.exe
+or
+patcher.exe 11000085C075DA8B44241C8B3D908140008D48 010FB6405A 01894C242084 data.bin
 ```
+>If the filename is not given, *input.txt* will be opened.
+
+The automatically generated config file *patcher.ini*:
+```ini
+; This is the configuration file for McSebi's Patcher
+; Putting a prefix is not required.
+
+[patcher]
+prefix = 980039C30F8
+target = 84D20200
+replace = 895C241C
+```
+
+> The config file makes changing many files patching the same sequence easier
+
+Files up to 4GB should work fine, even though larger files will propably take quite a while to process.
+
 ### Version
-**1.0.0.0**
+**1.1**
+ - Improved console output
+ - Skip confirmation when opened through console
+ - Show confirmation when file is dropped on the executable
+ - Safer handling of various strings
+ - Less debugging output
+ - Fixed lots of possible failiures in usage
+ 
+**1.0**
  - Initial Release
 
 ### Dependencies for Building
