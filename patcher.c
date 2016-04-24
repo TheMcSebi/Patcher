@@ -37,11 +37,12 @@ void conf_create(char* conf_name) {
 
   conftemp = fopen(conf_name, "w");
   if(conftemp != NULL) {
-    fputs("; This is the configuration file for McSebi's Patcher\n\n", conftemp);
+    fputs("; This is the configuration file for McSebi's Patcher\n", conftemp);
+    fputs("; Putting a prefix is not required.\n\n", conftemp);
     fputs("[patcher]\n", conftemp);
-    fputs("prefix = 68\n", conftemp);
-    fputs("target = 66\n", conftemp);
-    fputs("replace = 67", conftemp);
+    fputs("prefix = 980039C30F8\n", conftemp);
+    fputs("target = 84D20200\n", conftemp);
+    fputs("replace = 895C241C", conftemp);
     fclose(conftemp);
 
     printf("%s successfully created.\n", conf_name);
@@ -277,7 +278,7 @@ int main(int argc, char** argv) {
 
 
   input = fopen(input_file, "rb"); // Use binary mode to prevent headache
-  if(input != NULL && output != NULL) {
+  if(input != NULL) {
     filesize = fgetsize(input);
 
     output = fopen(output_file, "wb"); // Non-binary mode apparently does various magic to newlines
