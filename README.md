@@ -54,7 +54,7 @@ An example for mode 2 would be
 
    [inih]: <https://github.com/benhoyt/inih>
    [mingw32]: <http://www.mingw.org/>
-   [stdinc.c]: <https://mcsebi.ru/content/patcher/stdinc.c>
+   [stdinc.c]: <https://mcsebi.ru/patcher/stdinc.c>
 
 License
 ----
