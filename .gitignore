@@ -5,7 +5,8 @@ ehthumbs.db
 # Folder config file
 Desktop.ini
 release/
-Development/
+dev_patcher/
+dev_gui/
 
 # Recycle Bin used on file shares
 $RECYCLE.BIN/

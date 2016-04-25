@@ -3,6 +3,7 @@
 #include <string.h>
 #include "ini/ini.h"
 #include "ini/ini.c"
+#include <math.h>
 #include <unistd.h>
 #include "stdinc.c"
 
@@ -89,6 +90,7 @@ int main(int argc, char** argv) {
   // Internal Variable Handling
   char* inputstring = NULL;
   int varcount = 0;
+  char argprefix[] = "--\0";
 
   // ascii hex strings
   char pr[1024] = {0};
@@ -112,6 +114,7 @@ int main(int argc, char** argv) {
   char replace[1024] = {0};
 
   unsigned short mode = 0;
+  unsigned short guimode = 0;
 
   // file and hex stuff
   FILE* input = NULL;
@@ -123,10 +126,42 @@ int main(int argc, char** argv) {
 
   // Inner Loop Stuff
   int occurrences[4096] = {0};
+  int percent = 0;
+  int percentLogged = 0;
+
+  // Loops
   int occ = 0;
   long int i = 0;
-
   int j;
+  int r;
+
+  //////////////////////////////////////////////////////
+  //
+  //    Engine Parameter Parsing
+  //
+  //////////////////////////////////////////////////////
+
+
+  for(r = 0; argv[r] != NULL; r++) {
+
+    char arg[128] = {0};
+    if(memcmp(argv[r], argprefix, strlen(argprefix)) == 0) {
+      // arg found lol
+      strcpy(arg, &argv[r][strlen(argprefix)]);
+      int tempr = r + 1; // Move all other following parameters one to the front in order to prevent mistakes when parsing the actual parameters
+      while(argv[tempr] != NULL) {
+        argv[tempr-1] = argv[tempr];
+        tempr++;
+      }
+      argc--;
+
+      if(memcmp(arg, "gui", 3) == 0) {
+        guimode = 1;
+        confirmation_interrupts = 0;
+        printf("gui mode enabled\n", arg);
+      }
+    }
+  }
 
   //////////////////////////////////////////////////////
   //
@@ -351,6 +386,16 @@ int main(int argc, char** argv) {
           // if nothing found, write byte to output
           i++;
           fwrite(&buffer[0], sizeof(char), 1, output);
+        }
+
+
+        if(guimode == 1) { // Add support for GUI
+          percent = floor(100.0*i/filesize);
+          //printf("percent: %d\n", percent);
+          if(percent > percentLogged) {
+            percentLogged = percent;
+            printf("%d\n", percent);
+          }
         }
       }
 
