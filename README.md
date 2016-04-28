@@ -71,16 +71,23 @@ Files up to 4GB should work fine, even though larger files will propably take qu
  
 **1.0**
  - Initial Release
+ 
+### Dependencies for Running
+* none
 
 ### Dependencies for Building
-
+patcher.exe:
 * [inih] - Simple .INI file parser in C, good for embedded systems
 * [mingw32] - Minimalist GNU for Windows
 * [stdinc.c] - Personal STDINC file
 
+patcher_gui.exe:
+* [AutoIt3] - A free BASIC-like scripting language designed for automating the Windows GUI and general scripting. 
+
    [inih]: <https://github.com/benhoyt/inih>
    [mingw32]: <http://www.mingw.org/>
    [stdinc.c]: <https://mcsebi.ru/patcher/stdinc.c>
+   [stdinc.c]: <https://www.autoitscript.com/site/autoit/>
 
 License
 ----
