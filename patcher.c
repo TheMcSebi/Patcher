@@ -85,7 +85,7 @@ void getOutputFile(char* out, char* in) {
 
 int main(int argc, char** argv) {
   system("cls");
-  printf(" + + + + + McSebi's Bytepatcher + + + + +\n\n");
+  printf(" Byte Patcher >_\n\n");
 
   // Internal Variable Handling
   char* inputstring = NULL;
@@ -284,7 +284,7 @@ int main(int argc, char** argv) {
       printf(" Length of Filename = %d\n", strlen(filestr));
     }
 
-    if(confirmation_interrupts == 1) {
+    if(confirmation_interrupts == 1 && guimode == 0) {
       printf("\nEnter to continue...");
       getchar();
     }
@@ -355,7 +355,7 @@ int main(int argc, char** argv) {
 
     printf(" Filesize = %d bytes\n", filesize);
 
-    if(confirmation_interrupts == 1) {
+    if(confirmation_interrupts == 1 && guimode == 0) {
       printf("\nEnter to continue...");
       getchar();
     }
@@ -433,7 +433,7 @@ int main(int argc, char** argv) {
   }
 
   // Wait if opened through shortcut (one of the intended useages)
-  if(confirmation_interrupts == 1) {
+  if(confirmation_interrupts == 1 && guimode == 0) {
     printf("\nEnter to continue...");
     getchar();
   }
