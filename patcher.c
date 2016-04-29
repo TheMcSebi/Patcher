@@ -8,7 +8,7 @@
 #include "stdinc.c"
 
 // global & dev
-unsigned short debug = 1;
+unsigned short debug = 0;
 unsigned short confirmation_interrupts = 0;
 
 typedef struct
@@ -18,8 +18,7 @@ typedef struct
     const char* replace;
 } configuration;
 
-static int conf_handler(void* user, const char* section, const char* name,
-                   const char* value)
+static int conf_handler(void* user, const char* section, const char* name, const char* value)
 {
     configuration* pconfig = (configuration*)user;
 
@@ -37,22 +36,20 @@ static int conf_handler(void* user, const char* section, const char* name,
     return 1;
 }
 
-void conf_create(char* conf_name) {
-  FILE* conftemp = NULL;
-
-  conftemp = fopen(conf_name, "w");
-  if(conftemp != NULL) {
-    fputs("; This is the configuration file.\n", conftemp);
-    fputs("; Setting a prefix is optional.\n\n", conftemp);
-    fputs("[patcher]\n", conftemp);
-    fputs("prefix = 980039C30F8\n", conftemp);
-    fputs("target = 84D20200\n", conftemp);
-    fputs("replace = 895C241C", conftemp);
-    fclose(conftemp);
-
-    printf("%s successfully created.\n", conf_name);
+int conf_create(char* cn) {
+  FILE* cf = NULL;
+  cf = fopen(cn, "w");
+  if(cf != NULL) {
+    fputs("; This is the configuration file.\n", cf);
+    fputs("; Setting a prefix is optional.\n\n", cf);
+    fputs("[patcher]\n", cf);
+    fputs("prefix = 980039C30F8\n", cf);
+    fputs("target = 84D20200\n", cf);
+    fputs("replace = 895C241C", cf);
+    fclose(cf);
+    return 1;
   } else {
-    printf("Could not create %s\n", conf_name);
+    return 0;
   }
 }
 
@@ -77,6 +74,14 @@ void getOutputFile(char* out, char* in) {
   }
 }
 
+
+void confirmationInterrupt(ci, gm) {
+  if(ci == 1 && gm == 0) {
+    printf("\n Enter to continue...");
+    getchar();
+  }
+}
+
 //////////////////////////////////////////////////////
 //
 //    Main Function & Initialization
@@ -84,26 +89,33 @@ void getOutputFile(char* out, char* in) {
 //////////////////////////////////////////////////////
 
 int main(int argc, char** argv) {
-  system("cls");
-  printf(" Byte Patcher >_\n\n");
+  printf(" # Byte Patcher >_\n\n");
+
+  char argprefix[] = "--\0";
 
   // Internal Variable Handling
   char* inputstring = NULL;
   int varcount = 0;
-  char argprefix[] = "--\0";
+
+
+  // file names and file input stuff
+  char input_file[128] = {0};
+  char output_file[128] = {0};
+  char config_file[128] = {0};
+  strcpy(config_file, "patcher.ini\0");
+
+  // file and hex stuff
+  FILE* input = NULL;
+  FILE* output = NULL;
+  FILE* config = NULL;
+  int filesize = 0;
+  int targetsize = 0;
+  int slen = 0;
 
   // ascii hex strings
   char pr[1024] = {0};
   char ta[1024] = {0};
   char re[1024] = {0};
-
-  // file names and file input stuff
-  char filestr[128] = {0};
-  char input_file[128] = {0};
-  char output_file[128] = {0};
-  char config_file[128] = {0};
-  strcpy(filestr, "input.txt\0");
-  strcpy(config_file, "patcher.ini\0");
 
   // raw hex length
   int plen, tlen, rlen;
@@ -113,16 +125,8 @@ int main(int argc, char** argv) {
   char target[1024] = {0};
   char replace[1024] = {0};
 
-  unsigned short mode = 0;
+  //unsigned short mode = 0;
   unsigned short guimode = 0;
-
-  // file and hex stuff
-  FILE* input = NULL;
-  FILE* output = NULL;
-  FILE* config = NULL;
-  int filesize = 0;
-  int targetsize = 0;
-  int slen = 0;
 
   // Inner Loop Stuff
   int occurrences[4096] = {0};
@@ -133,7 +137,7 @@ int main(int argc, char** argv) {
   int occ = 0;
   long int i = 0;
   int j;
-  int r;
+  int r; // check for engine parameter
 
   //////////////////////////////////////////////////////
   //
@@ -157,8 +161,7 @@ int main(int argc, char** argv) {
 
       if(memcmp(arg, "gui", 3) == 0) {
         guimode = 1;
-        confirmation_interrupts = 0;
-        printf("gui mode enabled\n", arg);
+        printf(" > GUI Mode enabled...\n", arg);
       }
     }
   }
@@ -170,25 +173,29 @@ int main(int argc, char** argv) {
   //
   //////////////////////////////////////////////////////
 
-  if(argc == 2) {
-    // Mode 0: <file> & read from config file
-    strcpy(filestr, argv[1]);
+  if(argc == 2) { // <file> .. read config
+    strcpy(input_file, argv[1]);
 
     // Do config parsing...
     configuration conf;
     if (ini_parse(config_file, conf_handler, &conf) < 0) {
-        printf("Can't load '%s'\n", config_file);
-        printf("Creating it...\n");
-        conf_create(config_file);
+        printf(" Can't load '%s'\n", config_file);
+        printf(" Creating it...\n");
+        int confCreated = conf_create(config_file);
 
-        if (ini_parse(config_file, conf_handler, &conf) < 0) {
-            printf("Unable to load '%s' on second attempt.\n", config_file);
-            getchar();
-            return 1;
+        //if (ini_parse(config_file, conf_handler, &conf) < 0) {
+        //    printf(" Unable to create config file. '%s' on second attempt.\n", config_file);
+        //}
+        if(confCreated == 1) {
+          printf(" A config file was generated. Please edit it to your favour and restart the application.\n");
+        } else {
+          printf(" A config could not be created. Please create the file yourself using the template from github (https://github.com/TheMcSebi/Patcher).\n");
         }
+        confirmationInterrupt(confirmation_interrupts, guimode);
+        return 1;
     }
 
-    printf("Config loaded from '%s':\n prefix='%s'\n target='%s'\n replace='%s'\n\n", config_file, conf.prefix, conf.target, conf.replace);
+    printf(" Config loaded from '%s':\n  Prefix: %s\n  Target: %s\n  Replace: %s\n\n", config_file, conf.prefix, conf.target, conf.replace);
 
     strcpy(pr, conf.prefix);
     strcpy(ta, conf.target);
@@ -201,39 +208,21 @@ int main(int argc, char** argv) {
     const char* replace;
     */
 
-  } else if(argc == 3) {
-    // Mode 1: <target> <replace>
-    strcpy(ta, argv[1]);
-    strcpy(re, argv[2]);
+  } else if(argc == 3) { // unassigned
+    printf(" Input modes are either <file> <target> <replace> or <file> <prefix> <target> <replace>.\n");
+    confirmationInterrupt(confirmation_interrupts, guimode);
+    return 1;
 
-  } else if(argc == 4) {
-    // Detect if mode 1 or 2 by checking if argv[3] is a file
+  } else if(argc == 4) { // <file> <target> <replace>
+    strcpy(input_file, argv[1]);
+    strcpy(ta, argv[2]);
+    strcpy(re, argv[3]);
 
-    char argtest[128] = {0};
-    strcpy(argtest, argv[3]);
-    FILE* argfile = NULL;
-    argfile = fopen(argtest, "rb");
-    if(argfile != NULL) {
-      // Mode 1 <target> <replace> <file>
-      strcpy(ta, argv[1]);
-      strcpy(re, argv[2]);
-      strcpy(filestr, argv[3]);
-
-    } else {
-
-      // Mode 2 <prefix> <target> <replace>
-      strcpy(pr, argv[1]);
-      strcpy(ta, argv[2]);
-      strcpy(re, argv[3]);
-    }
-    fclose(argfile);
-  } else if(argc == 5) {
-      // Mode 2 <prefix> <target> <replace> <file>
-
-      strcpy(pr, argv[1]);
-      strcpy(ta, argv[2]);
-      strcpy(re, argv[3]);
-      strcpy(filestr, argv[4]);
+  } else if(argc == 5) { // <file> <prefix> <target> <replace>
+      strcpy(input_file, argv[1]);
+      strcpy(pr, argv[2]);
+      strcpy(ta, argv[3]);
+      strcpy(re, argv[4]);
 
   } else {
     //////////////////////////////////////////////////////
@@ -244,56 +233,34 @@ int main(int argc, char** argv) {
     //////////////////////////////////////////////////////
     confirmation_interrupts = 1;
 
-    printf(" Modes\n  1 = <target> <replace> [file]\n  2 = <prefix> <target> <replace> [file]\n\n");
-    printf("Enter Mode: ");
-    scanf("%hu", &mode);
-    getchar(); // clear buffer after dirty scanf
-
-    printf("\nEnter Data: ");
+    printf(" Manual Data Input\n  Option 1: <file> <target> <replace>\n  Option 2: <file> <prefix> <target> <replace>\n\n");
+    printf(" Enter Data: ");
     inputstring = getline();
 
     varcount = 1 + countChars(inputstring, ' ');
 
-    if(debug == 1) {
-      printf(" varcount = %d\n", varcount);
-    }
+    if(varcount == 3) {
+      sscanf(inputstring, "%s %s %s", input_file, ta, re);
 
-    if(mode == 1) { // Mode 1: <target> <replace> [file]
-      if(varcount == 2) { // If filename is not given
-        sscanf(inputstring, "%s %s", ta, re);
-      } else if(varcount == 3) { // If filename is given
-        sscanf(inputstring, "%s %s %s", ta, re, filestr);
-      } else {
-        printf("Error: Unsupported Input Format for Mode 1\n");
-      }
-    } else if(mode == 2) { // Mode 2: <prefix> <target> <replace> [file]
-      if(varcount == 3) { // If filename is not given
-        sscanf(inputstring, "%s %s %s", pr, ta, re);
-      } else if(varcount == 4) { // If filename is given
-        sscanf(inputstring, "%s %s %s %s", pr, ta, re, filestr);
-      } else {
-        printf("Error: Unsupported Input Format for Mode 2\n");
-      }
+    } else if(varcount == 4) {
+      sscanf(inputstring, "%s %s %s %s", input_file, pr, ta, re);
+
     } else {
-      printf("Error: Unsupported Mode\n");
+      printf(" Error: Unsupported Input Format\n Notice: Hex strings and filenames in input have to be seperated by spaces.\n");
+      confirmationInterrupt(confirmation_interrupts, guimode);
+      return 1;
     }
 
-    printf("\n Filename: %s\n", filestr);
-
+    printf("\n Confirm Data:\n  Filename: %s\n  Prefix: %s\n  Target: %s\n  Replace: %s\n", input_file, pr, ta, re);
     if(debug == 1) {
-      printf(" Length of Filename = %d\n", strlen(filestr));
+      printf("  varcount = %d\n", varcount);
     }
-
-    if(confirmation_interrupts == 1 && guimode == 0) {
-      printf("\nEnter to continue...");
-      getchar();
-    }
-
-  } // if(argc == n) end
+    confirmationInterrupt(confirmation_interrupts, guimode);
+  } // if(argc == n) // end of parameter checking and variable assigning stuff
 
   //////////////////////////////////////////////////////
   //
-  //    Displaying all kinds of information and preparing next steps
+  //    Convert Hex Strings & prepare stuff
   //
   //////////////////////////////////////////////////////
 
@@ -301,17 +268,15 @@ int main(int argc, char** argv) {
   tlen = strlen(ta)/2;
   rlen = strlen(re)/2;
 
-  strcpy(input_file, filestr);
-
   getOutputFile(output_file, input_file);
 
-  printf("\n INPUT = %s\n OUTPUT = %s\n", input_file, output_file);
+  printf("\n Input File: %s\n Output File: %s\n", input_file, output_file);
 
   if(tlen == rlen) {
     printf("\n Length of prefix hex: %d\n Length of section hex: %d\n", plen, tlen);
   } else {
-    printf("Error: Target length does not match Replace length.\n");
-    getchar();
+    printf(" Error: Target length does not match Replace length.\n");
+    confirmationInterrupt(confirmation_interrupts, guimode);
     return 1;
   }
 
@@ -328,12 +293,12 @@ int main(int argc, char** argv) {
 
   slen = plen+tlen;
 
-  printf("\n Prefix = '%s'\n Target = '%s'\n Replace = '%s'\n", prefix, target, replace);
+  printf("\n ASCII Prefix: '%s'\n ASCII Target: '%s'\n ASCII Replace: '%s'\n", prefix, target, replace);
 
   input = fopen(input_file, "rb"); // Use binary mode to prevent headache
   if(input != NULL) {
     filesize = fgetsize(input);
-    printf("\nInput file opened successfully.\n");
+    printf("\n Input file opened successfully.\n");
 
     char* scanner = (char*)malloc(slen); // Initialize scanner array treating it as low level as possible
     memset(scanner, 0, slen);
@@ -355,14 +320,11 @@ int main(int argc, char** argv) {
 
     printf(" Filesize = %d bytes\n", filesize);
 
-    if(confirmation_interrupts == 1 && guimode == 0) {
-      printf("\nEnter to continue...");
-      getchar();
-    }
+    confirmationInterrupt(confirmation_interrupts, guimode);
 
     output = fopen(output_file, "wb"); // Non-binary mode apparently does various magic to newlines
     if(output != NULL) {
-      printf("Output opened successfully.\n");
+      printf(" Output opened successfully.\n");
       //////////////////////////////////////////////////////
       //
       //    Inner Loop Start
@@ -406,10 +368,10 @@ int main(int argc, char** argv) {
       fwrite(buffer, sizeof(char), slen, output);
 
       // Print out all information on where the string has been located at
-      printf("\nA total of %d occurrences has been patched:\n", occ);
+      printf("\n A total of %d occurrences has been patched:\n", occ);
       for(j = 0; j < occ; j++) {
         int o = occurrences[j];
-        printf("%d: Location: 0x%x dec(%d)\n", j+1, o, o);
+        printf(" %d: Location: 0x%x dec(%d)\n", j+1, o, o);
       }
 
       targetsize = fgetsize(output);
@@ -418,24 +380,20 @@ int main(int argc, char** argv) {
       fclose(output);
 
       if(filesize != targetsize) {
-        printf("Output size does not match input size.");
-        getchar();
+        printf(" Output size does not match input size.");
+        confirmationInterrupt(confirmation_interrupts, guimode);
         return 1;
       }
 
-      printf("\nFinished.\n");
+      printf("\n Finished.\n");
     } else {
-      printf("Error: Failed to open output file for writing.\n");
+      printf(" Error: Failed to open output file for writing.\n");
     }
 
   } else {
-    printf("Error: Failed to open input file for reading.\n");
+    printf(" Error: Failed to open input file for reading.\n");
   }
 
-  // Wait if opened through shortcut (one of the intended useages)
-  if(confirmation_interrupts == 1 && guimode == 0) {
-    printf("\nEnter to continue...");
-    getchar();
-  }
+  confirmationInterrupt(confirmation_interrupts, guimode);
   return 0;
 }

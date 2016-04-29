@@ -97,15 +97,10 @@ While 1
 			Local $cmd
 			FileChangeDir(@ScriptDir)
 			if(StringLen($Prefix) > 0) Then
-				$cmd = "patcher.exe " & $Prefix & " " & $Target & " " & $Replace & " " & $File & " --gui"
-				;Local $pid = Run("patcher.exe" & $Prefix & " " & $Target & " " & $Replace & " " & $File & " --gui", @ScriptDir, @SW_SHOW, $STDIN_CHILD + $STDOUT_CHILD)
-				;Local $pid = ShellExecute("patcher.exe", $Prefix & " " & $Target & " " & $Replace & " " & $File & "--gui", @ScriptDir)
-
+				$cmd = "patcher.exe " & $File & " " & $Prefix & " " & $Target & " " & $Replace & " --gui"
 				$pid = Run(@ComSpec & " /c " & $cmd, "", @SW_HIDE, $STDIN_CHILD + $STDOUT_CHILD)
 			Else
-				$cmd = "patcher.exe " & $Target & " " & $Replace & " " & $File & " --gui"
-				;$cmd = "echo " & $cmd & ">test.txt"
-				;Local $pid = Run('"patcher.exe"' & $Target & $Replace & $File "--gui", @ScriptDir, @SW_SHOW, $STDIN_CHILD + $STDOUT_CHILD)
+				$cmd = "patcher.exe " & $File & " " & $Target & " " & $Replace & " --gui"
 				$pid = Run(@ComSpec & " /c " & $cmd, "", @SW_HIDE, $STDIN_CHILD + $STDOUT_CHILD)
 			EndIf
 
@@ -118,10 +113,10 @@ While 1
 					$stdout = StdoutRead($pid, True)
 					If StringInStr($stdout, @CRLF) <> 0 Then ; INSERT DIRECTLY AFTER If: StringInStr($stdout, @CR) <> 0 Or
 						$line = StdoutRead($pid)
-						println($line)
+						println($line) ; not sure how to fix yet, haven't really looked into yet either though
 						If StringInStr($line, "Finished.") <> 0 Or Not ProcessExists($pid) Then
 							$running = False
-							println("Finished")
+							println("Finished.")
 						EndIf
 					EndIf
 				WEnd
